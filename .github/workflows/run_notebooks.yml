@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # Allows you to click a button to run it manually anytime
+  workflow_dispatch:
 
 jobs:
   run-notebooks:
@@ -15,32 +15,37 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # 2. Set up Python environment
+    # 2. Set up Python environment (Error Fix: Cache removed)
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
-        cache: 'pip' # Speeds up future runs
 
     # 3. Install Jupyter and dependencies
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
         pip install jupyter nbconvert ipykernel
-        # If your notebook needs extra packages (like pandas, requests), add them here:
-        # pip install pandas requests matplotlib
+        # Add your custom project packages below if you need them:
+        # pip install pandas requests
 
     # 4. Find and execute ALL .ipynb files in the repo
     - name: Execute Notebooks
       run: |
         find . -name "*.ipynb" -not -path '*/.*' -exec jupyter nbconvert --to notebook --execute --inplace {} \;
 
-    # 5. Commit the finished notebooks back to the repo with outputs visible
+    # 5. Print the Notebook Outputs into the GitHub Log Preview
+    - name: Preview Notebook Outputs in Log
+      run: |
+        echo "=== STARTING NOTEBOOK OUTPUT PREVIEW ==="
+        find . -name "*.ipynb" -not -path '*/.*' -exec sh -c 'echo "--- Notebook: {} ---" && jupyter nbconvert --to script --stdout {} | python' \;
+        echo "=== END OF NOTEBOOK PREVIEW ==="
+
+    # 6. Commit the finished notebooks back to the repo
     - name: Commit and Push Outputs
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@://github.com"
         git add *.ipynb
-        # Only commit if something actually changed to avoid workflow loops
         git diff-index --quiet HEAD || git commit -m "Automated background notebook execution [skip ci]"
         git push
