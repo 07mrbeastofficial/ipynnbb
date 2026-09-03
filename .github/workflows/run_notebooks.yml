@@ -1,0 +1,46 @@
+name: Run Jupyter Notebooks in Background
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allows you to click a button to run it manually anytime
+
+jobs:
+  run-notebooks:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Checkout the repository code
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    # 2. Set up Python environment
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip' # Speeds up future runs
+
+    # 3. Install Jupyter and dependencies
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install jupyter nbconvert ipykernel
+        # If your notebook needs extra packages (like pandas, requests), add them here:
+        # pip install pandas requests matplotlib
+
+    # 4. Find and execute ALL .ipynb files in the repo
+    - name: Execute Notebooks
+      run: |
+        find . -name "*.ipynb" -not -path '*/.*' -exec jupyter nbconvert --to notebook --execute --inplace {} \;
+
+    # 5. Commit the finished notebooks back to the repo with outputs visible
+    - name: Commit and Push Outputs
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@://github.com"
+        git add *.ipynb
+        # Only commit if something actually changed to avoid workflow loops
+        git diff-index --quiet HEAD || git commit -m "Automated background notebook execution [skip ci]"
+        git push
